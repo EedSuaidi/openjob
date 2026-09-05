@@ -13,9 +13,7 @@ export const getProfile = async (req, res, next) => {
 
     res.status(200).json({
       status: "success",
-      data: {
-        profile,
-      },
+      data: profile,
     });
   } catch (error) {
     next(error);

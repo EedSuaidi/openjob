@@ -18,14 +18,14 @@ export const verifyNewEmail = async (email) => {
   }
 };
 
-export const createUser = async ({ name, email, password }) => {
+export const createUser = async ({ name, email, password, role }) => {
   await verifyNewEmail(email);
 
   const hashedPassword = await hashPassword(password);
 
   const query = {
-    text: "INSERT INTO users(name, email, password) VALUES($1, $2, $3) RETURNING id",
-    values: [name, email, hashedPassword],
+    text: "INSERT INTO users(name, email, password, role) VALUES($1, $2, $3, $4) RETURNING id",
+    values: [name, email, hashedPassword, role],
   };
 
   const result = await pool.query(query);
@@ -42,7 +42,7 @@ export const getUserById = async (id) => {
   }
 
   const query = {
-    text: "SELECT id, name, email FROM users WHERE id = $1",
+    text: "SELECT id, name, email, role FROM users WHERE id = $1",
     values: [id],
   };
 

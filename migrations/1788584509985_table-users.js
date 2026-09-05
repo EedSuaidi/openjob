@@ -14,6 +14,7 @@ export const up = (pgm) => {
     name: { type: "varchar(255)", notNull: true },
     email: { type: "varchar(255)", notNull: true, unique: true },
     password: { type: "varchar(255)", notNull: true },
+    role: { type: "varchar(255)", notNull: true },
     created_at: {
       type: "timestamp",
       notNull: true,

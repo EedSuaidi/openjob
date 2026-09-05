@@ -7,7 +7,7 @@ import NotFoundError from "../exceptions/not-found.error.js";
 
 export const getUserProfile = async (userId) => {
   const query = {
-    text: "SELECT id, name, email, created_at FROM users WHERE id = $1",
+    text: "SELECT id, name, email, role, created_at FROM users WHERE id = $1",
     values: [userId],
   };
 
