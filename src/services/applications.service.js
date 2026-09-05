@@ -72,29 +72,63 @@ export const getApplicationById = async (id) => {
 };
 
 export const getApplicationsByUser = async (userId) => {
+  if (
+    !Number.isInteger(Number(userId)) ||
+    Number(userId) <= 0 ||
+    Number(userId) > 2147483647
+  ) {
+    return [];
+  }
+
   const query = {
-    text: "SELECT id, job_id, status, created_at FROM applications WHERE user_id = $1 ORDER BY created_at DESC",
+    text: "SELECT id, user_id, job_id, status, created_at FROM applications WHERE user_id = $1 ORDER BY created_at DESC",
     values: [userId],
   };
-  const result = await pool.query(query);
-  return result.rows.map((row) => ({
-    ...row,
-    id: String(row.id),
-    job_id: String(row.job_id),
-  }));
+
+  try {
+    const result = await pool.query(query);
+    return result.rows.map((row) => ({
+      ...row,
+      id: String(row.id),
+      user_id: String(row.user_id),
+      job_id: String(row.job_id),
+    }));
+  } catch (error) {
+    if (error.code === "22P02" || error.code === "22003") {
+      return [];
+    }
+    throw error;
+  }
 };
 
 export const getApplicationsByJob = async (jobId) => {
+  if (
+    !Number.isInteger(Number(jobId)) ||
+    Number(jobId) <= 0 ||
+    Number(jobId) > 2147483647
+  ) {
+    return [];
+  }
+
   const query = {
-    text: "SELECT id, user_id, status, created_at FROM applications WHERE job_id = $1 ORDER BY created_at DESC",
+    text: "SELECT id, user_id, job_id, status, created_at FROM applications WHERE job_id = $1 ORDER BY created_at DESC",
     values: [jobId],
   };
-  const result = await pool.query(query);
-  return result.rows.map((row) => ({
-    ...row,
-    id: String(row.id),
-    user_id: String(row.user_id),
-  }));
+
+  try {
+    const result = await pool.query(query);
+    return result.rows.map((row) => ({
+      ...row,
+      id: String(row.id),
+      user_id: String(row.user_id),
+      job_id: String(row.job_id),
+    }));
+  } catch (error) {
+    if (error.code === "22P02" || error.code === "22003") {
+      return [];
+    }
+    throw error;
+  }
 };
 
 export const updateApplicationStatus = async (id, status) => {

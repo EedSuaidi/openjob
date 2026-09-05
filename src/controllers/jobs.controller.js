@@ -35,7 +35,7 @@ export const getJobById = async (req, res, next) => {
 export const getJobsByCompany = async (req, res, next) => {
   try {
     const jobs = await jobsService.getJobsByCompany(req.params.companyId);
-    res.status(200).json({ status: "success", data: jobs });
+    res.status(200).json({ status: "success", data: { jobs } });
   } catch (error) {
     next(error);
   }
@@ -44,7 +44,7 @@ export const getJobsByCompany = async (req, res, next) => {
 export const getJobsByCategory = async (req, res, next) => {
   try {
     const jobs = await jobsService.getJobsByCategory(req.params.categoryId);
-    res.status(200).json({ status: "success", data: jobs });
+    res.status(200).json({ status: "success", data: { jobs } });
   } catch (error) {
     next(error);
   }

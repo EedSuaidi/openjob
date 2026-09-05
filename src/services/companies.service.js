@@ -5,10 +5,10 @@
 import pool from "../config/database.config.js";
 import NotFoundError from "../exceptions/not-found.error.js";
 
-export const createCompany = async ({ name, location, description }) => {
+export const createCompany = async ({ name, location, description = "" }) => {
   const query = {
     text: "INSERT INTO companies(name, location, description) VALUES($1, $2, $3) RETURNING id",
-    values: [name, location, description],
+    values: [name, location, description || ""],
   };
   const result = await pool.query(query);
   return result.rows[0].id;
@@ -65,10 +65,16 @@ export const updateCompany = async (id, { name, location, description }) => {
     throw new NotFoundError("Gagal memperbarui. Perusahaan tidak ditemukan.");
   }
 
-  const query = {
-    text: "UPDATE companies SET name = $1, location = $2, description = $3 WHERE id = $4 RETURNING id",
-    values: [name, location, description, id],
-  };
+  const query =
+    description !== undefined
+      ? {
+          text: "UPDATE companies SET name = $1, location = $2, description = $3 WHERE id = $4 RETURNING id",
+          values: [name, location, description, id],
+        }
+      : {
+          text: "UPDATE companies SET name = $1, location = $2 WHERE id = $3 RETURNING id",
+          values: [name, location, id],
+        };
 
   try {
     const result = await pool.query(query);

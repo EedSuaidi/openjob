@@ -27,7 +27,7 @@ export const login = async (req, res, next) => {
     // Simpan refresh token ke basis data
     await authenticationsService.addRefreshToken(refreshToken);
 
-    res.status(201).json({
+    res.status(200).json({
       status: "success",
       message: "Autentikasi berhasil.",
       data: {

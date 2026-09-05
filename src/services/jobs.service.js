@@ -99,27 +99,63 @@ export const getJobById = async (id) => {
 };
 
 export const getJobsByCompany = async (companyId) => {
+  if (
+    !Number.isInteger(Number(companyId)) ||
+    Number(companyId) <= 0 ||
+    Number(companyId) > 2147483647
+  ) {
+    return [];
+  }
+
   const query = {
-    text: "SELECT id, title, created_at FROM jobs WHERE company_id = $1 ORDER BY created_at DESC",
+    text: "SELECT id, title, company_id, category_id, created_at FROM jobs WHERE company_id = $1 ORDER BY created_at DESC",
     values: [companyId],
   };
-  const result = await pool.query(query);
-  return result.rows.map((row) => ({
-    ...row,
-    id: String(row.id),
-  }));
+
+  try {
+    const result = await pool.query(query);
+    return result.rows.map((row) => ({
+      ...row,
+      id: String(row.id),
+      company_id: String(row.company_id),
+      category_id: String(row.category_id),
+    }));
+  } catch (error) {
+    if (error.code === "22P02" || error.code === "22003") {
+      return [];
+    }
+    throw error;
+  }
 };
 
 export const getJobsByCategory = async (categoryId) => {
+  if (
+    !Number.isInteger(Number(categoryId)) ||
+    Number(categoryId) <= 0 ||
+    Number(categoryId) > 2147483647
+  ) {
+    return [];
+  }
+
   const query = {
-    text: "SELECT id, title, created_at FROM jobs WHERE category_id = $1 ORDER BY created_at DESC",
+    text: "SELECT id, title, company_id, category_id, created_at FROM jobs WHERE category_id = $1 ORDER BY created_at DESC",
     values: [categoryId],
   };
-  const result = await pool.query(query);
-  return result.rows.map((row) => ({
-    ...row,
-    id: String(row.id),
-  }));
+
+  try {
+    const result = await pool.query(query);
+    return result.rows.map((row) => ({
+      ...row,
+      id: String(row.id),
+      company_id: String(row.company_id),
+      category_id: String(row.category_id),
+    }));
+  } catch (error) {
+    if (error.code === "22P02" || error.code === "22003") {
+      return [];
+    }
+    throw error;
+  }
 };
 
 export const updateJob = async (

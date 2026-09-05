@@ -48,7 +48,7 @@ export const getApplicationsByUser = async (req, res, next) => {
     const applications = await applicationsService.getApplicationsByUser(
       req.params.userId
     );
-    res.status(200).json({ status: "success", data: applications });
+    res.status(200).json({ status: "success", data: { applications } });
   } catch (error) {
     next(error);
   }
@@ -59,7 +59,7 @@ export const getApplicationsByJob = async (req, res, next) => {
     const applications = await applicationsService.getApplicationsByJob(
       req.params.jobId
     );
-    res.status(200).json({ status: "success", data: applications });
+    res.status(200).json({ status: "success", data: { applications } });
   } catch (error) {
     next(error);
   }
