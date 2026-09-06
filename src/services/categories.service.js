@@ -23,89 +23,45 @@ export const getCategories = async () => {
 };
 
 export const getCategoryById = async (id) => {
-  if (
-    !Number.isInteger(Number(id)) ||
-    Number(id) <= 0 ||
-    Number(id) > 2147483647
-  ) {
-    throw new NotFoundError("Kategori tidak ditemukan.");
-  }
-
   const query = {
     text: "SELECT id, name FROM categories WHERE id = $1",
     values: [id],
   };
 
-  try {
-    const result = await pool.query(query);
+  const result = await pool.query(query);
 
-    if (result.rowCount === 0) {
-      throw new NotFoundError("Kategori tidak ditemukan.");
-    }
-    return {
-      ...result.rows[0],
-      id: String(result.rows[0].id),
-    };
-  } catch (error) {
-    if (error.code === "22P02" || error.code === "22003") {
-      throw new NotFoundError("Kategori tidak ditemukan.");
-    }
-    throw error;
+  if (result.rowCount === 0) {
+    throw new NotFoundError("Kategori tidak ditemukan.");
   }
+
+  return {
+    ...result.rows[0],
+    id: String(result.rows[0].id),
+  };
 };
 
 export const updateCategory = async (id, { name }) => {
-  if (
-    !Number.isInteger(Number(id)) ||
-    Number(id) <= 0 ||
-    Number(id) > 2147483647
-  ) {
-    throw new NotFoundError("Gagal memperbarui. Kategori tidak ditemukan.");
-  }
-
   const query = {
     text: "UPDATE categories SET name = $1 WHERE id = $2 RETURNING id",
     values: [name, id],
   };
 
-  try {
-    const result = await pool.query(query);
+  const result = await pool.query(query);
 
-    if (result.rowCount === 0) {
-      throw new NotFoundError("Gagal memperbarui. Kategori tidak ditemukan.");
-    }
-  } catch (error) {
-    if (error.code === "22P02" || error.code === "22003") {
-      throw new NotFoundError("Gagal memperbarui. Kategori tidak ditemukan.");
-    }
-    throw error;
+  if (result.rowCount === 0) {
+    throw new NotFoundError("Gagal memperbarui. Kategori tidak ditemukan.");
   }
 };
 
 export const deleteCategory = async (id) => {
-  if (
-    !Number.isInteger(Number(id)) ||
-    Number(id) <= 0 ||
-    Number(id) > 2147483647
-  ) {
-    throw new NotFoundError("Gagal menghapus. Kategori tidak ditemukan.");
-  }
-
   const query = {
     text: "DELETE FROM categories WHERE id = $1 RETURNING id",
     values: [id],
   };
 
-  try {
-    const result = await pool.query(query);
+  const result = await pool.query(query);
 
-    if (result.rowCount === 0) {
-      throw new NotFoundError("Gagal menghapus. Kategori tidak ditemukan.");
-    }
-  } catch (error) {
-    if (error.code === "22P02" || error.code === "22003") {
-      throw new NotFoundError("Gagal menghapus. Kategori tidak ditemukan.");
-    }
-    throw error;
+  if (result.rowCount === 0) {
+    throw new NotFoundError("Gagal menghapus. Kategori tidak ditemukan.");
   }
 };

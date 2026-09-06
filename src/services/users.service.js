@@ -33,34 +33,19 @@ export const createUser = async ({ name, email, password, role }) => {
 };
 
 export const getUserById = async (id) => {
-  if (
-    !Number.isInteger(Number(id)) ||
-    Number(id) <= 0 ||
-    Number(id) > 2147483647
-  ) {
-    throw new NotFoundError("Pengguna tidak ditemukan.");
-  }
-
   const query = {
     text: "SELECT id, name, email, role FROM users WHERE id = $1",
     values: [id],
   };
 
-  try {
-    const result = await pool.query(query);
+  const result = await pool.query(query);
 
-    if (result.rowCount === 0) {
-      throw new NotFoundError("Pengguna tidak ditemukan.");
-    }
-
-    return {
-      ...result.rows[0],
-      id: String(result.rows[0].id),
-    };
-  } catch (error) {
-    if (error.code === "22P02" || error.code === "22003") {
-      throw new NotFoundError("Pengguna tidak ditemukan.");
-    }
-    throw error;
+  if (result.rowCount === 0) {
+    throw new NotFoundError("Pengguna tidak ditemukan.");
   }
+
+  return {
+    ...result.rows[0],
+    id: String(result.rows[0].id),
+  };
 };

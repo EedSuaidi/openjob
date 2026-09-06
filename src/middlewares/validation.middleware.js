@@ -1,19 +1,31 @@
 /**
  * File: src/middlewares/validation.middleware.js
- * Middleware untuk memvalidasi request body menggunakan skema Zod.
+ * Middleware untuk memvalidasi request body dan parameter URL menggunakan skema Zod.
  */
 import InvariantError from "../exceptions/invariant.error.js";
+import NotFoundError from "../exceptions/not-found.error.js";
 
 export const validate = (schema) => (req, res, next) => {
   const result = schema.safeParse(req.body);
 
   if (!result.success) {
-    // Mengambil pesan error pertama dari Zod
     const errorMessage = result.error.issues[0].message;
     return next(new InvariantError(errorMessage));
   }
 
-  // Jika validasi sukses, perbarui req.body dengan data yang sudah di-parse (dan di-strip jika ada)
   req.body = result.data;
+  next();
+};
+
+export const validateParams = (schema, notFoundMessage) => (req, res, next) => {
+  const result = schema.safeParse(req.params);
+
+  if (!result.success) {
+    return next(
+      new NotFoundError(notFoundMessage ?? "Sumber daya tidak ditemukan.")
+    );
+  }
+
+  req.params = { ...req.params, ...result.data };
   next();
 };

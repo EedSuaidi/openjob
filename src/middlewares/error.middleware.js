@@ -13,14 +13,6 @@ export const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // Jika error sintaks data/ID dari PostgreSQL (misal input string pada kolom integer)
-  if (err.code === "22P02" || err.code === "22003") {
-    return res.status(404).json({
-      status: "failed",
-      message: "Sumber daya tidak ditemukan.",
-    });
-  }
-
   // Menangani Server Error (500)
   console.error(err);
   return res.status(500).json({

@@ -4,42 +4,23 @@
  */
 import { Router } from "express";
 import * as companiesController from "../controllers/companies.controller.js";
-import * as companiesService from "../services/companies.service.js";
-import NotFoundError from "../exceptions/not-found.error.js";
 import { verifyToken } from "../middlewares/auth.middleware.js";
-import { validate } from "../middlewares/validation.middleware.js";
+import {
+  validate,
+  validateParams,
+} from "../middlewares/validation.middleware.js";
 import { CompanySchema } from "../validators/companies.validator.js";
+import { IdParamSchema } from "../validators/params.validator.js";
 
 const router = Router();
 
-// Middleware untuk memverifikasi keberadaan perusahaan sebelum validasi data pembaruan
-const verifyCompanyExists = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    if (
-      !Number.isInteger(Number(id)) ||
-      Number(id) <= 0 ||
-      Number(id) > 2147483647
-    ) {
-      throw new NotFoundError("Gagal memperbarui. Perusahaan tidak ditemukan.");
-    }
-    await companiesService.getCompanyById(id);
-    next();
-  } catch (error) {
-    if (error instanceof NotFoundError) {
-      return next(
-        new NotFoundError("Gagal memperbarui. Perusahaan tidak ditemukan.")
-      );
-    }
-    next(error);
-  }
-};
-
-// PUBLIC ENDPOINTS
 router.get("/", companiesController.getCompanies);
-router.get("/:id", companiesController.getCompanyById);
+router.get(
+  "/:id",
+  validateParams(IdParamSchema, "Perusahaan tidak ditemukan."),
+  companiesController.getCompanyById
+);
 
-// PROTECTED ENDPOINTS
 router.post(
   "/",
   verifyToken,
@@ -49,10 +30,18 @@ router.post(
 router.put(
   "/:id",
   verifyToken,
-  verifyCompanyExists,
+  validateParams(
+    IdParamSchema,
+    "Gagal memperbarui. Perusahaan tidak ditemukan."
+  ),
   validate(CompanySchema),
   companiesController.putCompany
 );
-router.delete("/:id", verifyToken, companiesController.deleteCompany);
+router.delete(
+  "/:id",
+  verifyToken,
+  validateParams(IdParamSchema, "Gagal menghapus. Perusahaan tidak ditemukan."),
+  companiesController.deleteCompany
+);
 
 export default router;

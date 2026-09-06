@@ -5,63 +5,66 @@
 import { Router } from "express";
 import * as jobsController from "../controllers/jobs.controller.js";
 import * as bookmarksController from "../controllers/bookmarks.controller.js";
-import * as jobsService from "../services/jobs.service.js";
-import NotFoundError from "../exceptions/not-found.error.js";
 import { verifyToken } from "../middlewares/auth.middleware.js";
-import { validate } from "../middlewares/validation.middleware.js";
+import {
+  validate,
+  validateParams,
+} from "../middlewares/validation.middleware.js";
 import { JobSchema } from "../validators/jobs.validator.js";
+import {
+  IdParamSchema,
+  JobIdParamSchema,
+  JobBookmarkParamSchema,
+} from "../validators/params.validator.js";
 
 const router = Router();
 
-// PUBLIC ENDPOINTS
 router.get("/", jobsController.getJobs);
-router.get("/:id", jobsController.getJobById);
 router.get("/company/:companyId", jobsController.getJobsByCompany);
 router.get("/category/:categoryId", jobsController.getJobsByCategory);
+router.get(
+  "/:id",
+  validateParams(IdParamSchema, "Pekerjaan tidak ditemukan."),
+  jobsController.getJobById
+);
 
-const verifyJobExists = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    if (
-      !Number.isInteger(Number(id)) ||
-      Number(id) <= 0 ||
-      Number(id) > 2147483647
-    ) {
-      throw new NotFoundError("Gagal memperbarui. Pekerjaan tidak ditemukan.");
-    }
-    await jobsService.getJobById(id);
-    next();
-  } catch (error) {
-    if (error instanceof NotFoundError) {
-      return next(
-        new NotFoundError("Gagal memperbarui. Pekerjaan tidak ditemukan.")
-      );
-    }
-    next(error);
-  }
-};
-
-// PROTECTED ENDPOINTS
 router.post("/", verifyToken, validate(JobSchema), jobsController.postJob);
 router.put(
   "/:id",
   verifyToken,
-  verifyJobExists,
+  validateParams(
+    IdParamSchema,
+    "Gagal memperbarui. Pekerjaan tidak ditemukan."
+  ),
   validate(JobSchema),
   jobsController.putJob
 );
-router.delete("/:id", verifyToken, jobsController.deleteJob);
+router.delete(
+  "/:id",
+  verifyToken,
+  validateParams(IdParamSchema, "Gagal menghapus. Pekerjaan tidak ditemukan."),
+  jobsController.deleteJob
+);
 
-// BOOKMARK ROUTES
-router.post("/:jobId/bookmark", verifyToken, bookmarksController.postBookmark);
+router.post(
+  "/:jobId/bookmark",
+  verifyToken,
+  validateParams(JobIdParamSchema, "Pekerjaan tidak ditemukan."),
+  bookmarksController.postBookmark
+);
 router.get(
   "/:jobId/bookmark/:id",
   verifyToken,
+  validateParams(JobBookmarkParamSchema, "Data simpanan tidak ditemukan."),
   bookmarksController.getBookmarkDetail
 );
 router.delete(
   "/:jobId/bookmark",
   verifyToken,
+  validateParams(
+    JobIdParamSchema,
+    "Gagal menghapus. Data simpanan tidak ditemukan."
+  ),
   bookmarksController.deleteBookmark
 );
 

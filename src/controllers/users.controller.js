@@ -3,7 +3,6 @@
  * Pengendali untuk menangani permintaan terkait entitas pengguna.
  */
 import * as usersService from "../services/users.service.js";
-import NotFoundError from "../exceptions/not-found.error.js";
 
 export const registerUser = async (req, res, next) => {
   try {
@@ -17,28 +16,13 @@ export const registerUser = async (req, res, next) => {
       },
     });
   } catch (error) {
-    // Melempar error ke global error handler middleware
     next(error);
   }
 };
 
 export const getUserById = async (req, res, next) => {
   try {
-    const { id } = req.params;
-
-    if (
-      !Number.isInteger(Number(id)) ||
-      Number(id) <= 0 ||
-      Number(id) > 2147483647
-    ) {
-      throw new NotFoundError("Pengguna tidak ditemukan.");
-    }
-
-    const user = await usersService.getUserById(id);
-
-    if (!user) {
-      throw new NotFoundError("Pengguna tidak ditemukan.");
-    }
+    const user = await usersService.getUserById(req.params.id);
 
     res.status(200).json({
       status: "success",

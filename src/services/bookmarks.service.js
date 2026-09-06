@@ -7,7 +7,6 @@ import NotFoundError from "../exceptions/not-found.error.js";
 import InvariantError from "../exceptions/invariant.error.js";
 
 export const createBookmark = async (userId, jobId) => {
-  // Cek apakah pekerjaan sudah disimpan sebelumnya
   const checkQuery = {
     text: "SELECT id FROM bookmarks WHERE user_id = $1 AND job_id = $2",
     values: [userId, jobId],
@@ -26,36 +25,23 @@ export const createBookmark = async (userId, jobId) => {
 };
 
 export const getBookmarkDetail = async (id) => {
-  if (
-    !Number.isInteger(Number(id)) ||
-    Number(id) <= 0 ||
-    Number(id) > 2147483647
-  ) {
-    throw new NotFoundError("Data simpanan tidak ditemukan.");
-  }
-
   const query = {
     text: "SELECT id, user_id, job_id, created_at FROM bookmarks WHERE id = $1",
     values: [id],
   };
-  try {
-    const result = await pool.query(query);
-    if (result.rowCount === 0) {
-      throw new NotFoundError("Data simpanan tidak ditemukan.");
-    }
-    const row = result.rows[0];
-    return {
-      ...row,
-      id: String(row.id),
-      user_id: String(row.user_id),
-      job_id: String(row.job_id),
-    };
-  } catch (error) {
-    if (error.code === "22P02" || error.code === "22003") {
-      throw new NotFoundError("Data simpanan tidak ditemukan.");
-    }
-    throw error;
+
+  const result = await pool.query(query);
+  if (result.rowCount === 0) {
+    throw new NotFoundError("Data simpanan tidak ditemukan.");
   }
+
+  const row = result.rows[0];
+  return {
+    ...row,
+    id: String(row.id),
+    user_id: String(row.user_id),
+    job_id: String(row.job_id),
+  };
 };
 
 export const deleteBookmark = async (userId, jobId) => {
@@ -63,20 +49,10 @@ export const deleteBookmark = async (userId, jobId) => {
     text: "DELETE FROM bookmarks WHERE user_id = $1 AND job_id = $2 RETURNING id",
     values: [userId, jobId],
   };
-  try {
-    const result = await pool.query(query);
-    if (result.rowCount === 0) {
-      throw new NotFoundError(
-        "Gagal menghapus. Data simpanan tidak ditemukan."
-      );
-    }
-  } catch (error) {
-    if (error.code === "22P02" || error.code === "22003") {
-      throw new NotFoundError(
-        "Gagal menghapus. Data simpanan tidak ditemukan."
-      );
-    }
-    throw error;
+
+  const result = await pool.query(query);
+  if (result.rowCount === 0) {
+    throw new NotFoundError("Gagal menghapus. Data simpanan tidak ditemukan.");
   }
 };
 

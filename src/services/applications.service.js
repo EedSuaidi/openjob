@@ -5,9 +5,9 @@
 import pool from "../config/database.config.js";
 import NotFoundError from "../exceptions/not-found.error.js";
 import InvariantError from "../exceptions/invariant.error.js";
+import { parsePgIntId } from "../validators/params.validator.js";
 
 export const createApplication = async (userId, jobId) => {
-  // Verifikasi agar pengguna tidak melamar pekerjaan yang sama dua kali
   const checkQuery = {
     text: "SELECT id FROM applications WHERE user_id = $1 AND job_id = $2",
     values: [userId, jobId],
@@ -38,149 +38,85 @@ export const getApplications = async () => {
 };
 
 export const getApplicationById = async (id) => {
-  if (
-    !Number.isInteger(Number(id)) ||
-    Number(id) <= 0 ||
-    Number(id) > 2147483647
-  ) {
-    throw new NotFoundError("Lamaran tidak ditemukan.");
-  }
-
   const query = {
     text: "SELECT id, user_id, job_id, status, created_at FROM applications WHERE id = $1",
     values: [id],
   };
 
-  try {
-    const result = await pool.query(query);
-    if (result.rowCount === 0) {
-      throw new NotFoundError("Lamaran tidak ditemukan.");
-    }
-    const row = result.rows[0];
-    return {
-      ...row,
-      id: String(row.id),
-      user_id: String(row.user_id),
-      job_id: String(row.job_id),
-    };
-  } catch (error) {
-    if (error.code === "22P02" || error.code === "22003") {
-      throw new NotFoundError("Lamaran tidak ditemukan.");
-    }
-    throw error;
+  const result = await pool.query(query);
+  if (result.rowCount === 0) {
+    throw new NotFoundError("Lamaran tidak ditemukan.");
   }
+
+  const row = result.rows[0];
+  return {
+    ...row,
+    id: String(row.id),
+    user_id: String(row.user_id),
+    job_id: String(row.job_id),
+  };
 };
 
 export const getApplicationsByUser = async (userId) => {
-  if (
-    !Number.isInteger(Number(userId)) ||
-    Number(userId) <= 0 ||
-    Number(userId) > 2147483647
-  ) {
+  const parsedUserId = parsePgIntId(userId);
+  if (parsedUserId === null) {
     return [];
   }
 
   const query = {
     text: "SELECT id, user_id, job_id, status, created_at FROM applications WHERE user_id = $1 ORDER BY created_at DESC",
-    values: [userId],
+    values: [parsedUserId],
   };
 
-  try {
-    const result = await pool.query(query);
-    return result.rows.map((row) => ({
-      ...row,
-      id: String(row.id),
-      user_id: String(row.user_id),
-      job_id: String(row.job_id),
-    }));
-  } catch (error) {
-    if (error.code === "22P02" || error.code === "22003") {
-      return [];
-    }
-    throw error;
-  }
+  const result = await pool.query(query);
+  return result.rows.map((row) => ({
+    ...row,
+    id: String(row.id),
+    user_id: String(row.user_id),
+    job_id: String(row.job_id),
+  }));
 };
 
 export const getApplicationsByJob = async (jobId) => {
-  if (
-    !Number.isInteger(Number(jobId)) ||
-    Number(jobId) <= 0 ||
-    Number(jobId) > 2147483647
-  ) {
+  const parsedJobId = parsePgIntId(jobId);
+  if (parsedJobId === null) {
     return [];
   }
 
   const query = {
     text: "SELECT id, user_id, job_id, status, created_at FROM applications WHERE job_id = $1 ORDER BY created_at DESC",
-    values: [jobId],
+    values: [parsedJobId],
   };
 
-  try {
-    const result = await pool.query(query);
-    return result.rows.map((row) => ({
-      ...row,
-      id: String(row.id),
-      user_id: String(row.user_id),
-      job_id: String(row.job_id),
-    }));
-  } catch (error) {
-    if (error.code === "22P02" || error.code === "22003") {
-      return [];
-    }
-    throw error;
-  }
+  const result = await pool.query(query);
+  return result.rows.map((row) => ({
+    ...row,
+    id: String(row.id),
+    user_id: String(row.user_id),
+    job_id: String(row.job_id),
+  }));
 };
 
 export const updateApplicationStatus = async (id, status) => {
-  if (
-    !Number.isInteger(Number(id)) ||
-    Number(id) <= 0 ||
-    Number(id) > 2147483647
-  ) {
-    throw new NotFoundError("Gagal memperbarui. Lamaran tidak ditemukan.");
-  }
-
   const query = {
     text: "UPDATE applications SET status = $1 WHERE id = $2 RETURNING id",
     values: [status, id],
   };
 
-  try {
-    const result = await pool.query(query);
-    if (result.rowCount === 0) {
-      throw new NotFoundError("Gagal memperbarui. Lamaran tidak ditemukan.");
-    }
-  } catch (error) {
-    if (error.code === "22P02" || error.code === "22003") {
-      throw new NotFoundError("Gagal memperbarui. Lamaran tidak ditemukan.");
-    }
-    throw error;
+  const result = await pool.query(query);
+  if (result.rowCount === 0) {
+    throw new NotFoundError("Gagal memperbarui. Lamaran tidak ditemukan.");
   }
 };
 
 export const deleteApplication = async (id) => {
-  if (
-    !Number.isInteger(Number(id)) ||
-    Number(id) <= 0 ||
-    Number(id) > 2147483647
-  ) {
-    throw new NotFoundError("Gagal menghapus. Lamaran tidak ditemukan.");
-  }
-
   const query = {
     text: "DELETE FROM applications WHERE id = $1 RETURNING id",
     values: [id],
   };
 
-  try {
-    const result = await pool.query(query);
-    if (result.rowCount === 0) {
-      throw new NotFoundError("Gagal menghapus. Lamaran tidak ditemukan.");
-    }
-  } catch (error) {
-    if (error.code === "22P02" || error.code === "22003") {
-      throw new NotFoundError("Gagal menghapus. Lamaran tidak ditemukan.");
-    }
-    throw error;
+  const result = await pool.query(query);
+  if (result.rowCount === 0) {
+    throw new NotFoundError("Gagal menghapus. Lamaran tidak ditemukan.");
   }
 };
