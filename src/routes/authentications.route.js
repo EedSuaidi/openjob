@@ -4,6 +4,7 @@
  */
 import { Router } from "express";
 import * as authenticationsController from "../controllers/authentications.controller.js";
+import { verifyToken } from "../middlewares/auth.middleware.js";
 import { validate } from "../middlewares/validation.middleware.js";
 import {
   UserLoginSchema,
@@ -25,6 +26,7 @@ router.put(
 // Endpoint DELETE /authentications (Logout)
 router.delete(
   "/",
+  verifyToken,
   validate(RefreshTokenSchema),
   authenticationsController.logout
 );
