@@ -17,12 +17,55 @@ export const createApplication = async (userId, jobId) => {
     throw new InvariantError("Anda sudah melamar pekerjaan ini sebelumnya.");
   }
 
+  const jobResult = await pool.query({
+    text: "SELECT id FROM jobs WHERE id = $1",
+    values: [jobId],
+  });
+  if (jobResult.rowCount === 0) {
+    throw new NotFoundError("Pekerjaan tidak ditemukan.");
+  }
+
   const query = {
-    text: "INSERT INTO applications(user_id, job_id) VALUES($1, $2) RETURNING id",
+    text: "INSERT INTO applications(user_id, job_id) VALUES($1, $2) RETURNING id, user_id, job_id, status",
     values: [userId, jobId],
   };
   const result = await pool.query(query);
-  return result.rows[0].id;
+  const application = result.rows[0];
+  return {
+    ...application,
+    id: String(application.id),
+    user_id: String(application.user_id),
+    job_id: String(application.job_id),
+  };
+};
+
+export const getApplicationNotificationDetails = async (applicationId) => {
+  const result = await pool.query({
+    text: `
+      SELECT a.created_at AS application_date,
+             applicant.name AS applicant_name,
+             applicant.email AS applicant_email,
+             owner.email AS owner_email
+      FROM applications a
+      JOIN users applicant ON applicant.id = a.user_id
+      JOIN jobs j ON j.id = a.job_id
+      JOIN companies c ON c.id = j.company_id
+      JOIN users owner ON owner.id = c.owner_id
+      WHERE a.id = $1
+    `,
+    values: [applicationId],
+  });
+  if (result.rowCount === 0) {
+    throw new NotFoundError("Data notifikasi lamaran tidak ditemukan.");
+  }
+
+  const row = result.rows[0];
+  return {
+    ownerEmail: row.owner_email,
+    applicantName: row.applicant_name,
+    applicantEmail: row.applicant_email,
+    applicationDate: row.application_date,
+  };
 };
 
 export const getApplications = async () => {

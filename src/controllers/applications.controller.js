@@ -3,20 +3,22 @@
  * Pengendali untuk rute lamaran pekerjaan.
  */
 import * as applicationsService from "../services/applications.service.js";
+import { publishApplicationNotification } from "../services/application-notification.publisher.js";
 
 export const postApplication = async (req, res, next) => {
   try {
     const { id: userId } = req.user; // Didapat dari verifyToken
     const { job_id } = req.body;
 
-    const applicationId = await applicationsService.createApplication(
+    const application = await applicationsService.createApplication(
       userId,
       job_id
     );
+    publishApplicationNotification(application.id);
     res.status(201).json({
       status: "success",
       message: "Berhasil melamar pekerjaan.",
-      data: { id: String(applicationId) },
+      data: application,
     });
   } catch (error) {
     next(error);

@@ -13,7 +13,7 @@ import {
 
 export const postCompany = async (req, res, next) => {
   try {
-    const companyId = await companiesService.createCompany(req.body);
+    const companyId = await companiesService.createCompany(req.body, req.user.id);
     await deleteCache(COMPANY_LIST_CACHE_KEY);
     res
       .status(201)

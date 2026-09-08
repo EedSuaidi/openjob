@@ -5,10 +5,13 @@
 import pool from "../config/database.config.js";
 import NotFoundError from "../exceptions/not-found.error.js";
 
-export const createCompany = async ({ name, location, description = "" }) => {
+export const createCompany = async (
+  { name, location, description = "" },
+  ownerId
+) => {
   const query = {
-    text: "INSERT INTO companies(name, location, description) VALUES($1, $2, $3) RETURNING id",
-    values: [name, location, description || ""],
+    text: "INSERT INTO companies(name, location, description, owner_id) VALUES($1, $2, $3, $4) RETURNING id",
+    values: [name, location, description || "", ownerId],
   };
   const result = await pool.query(query);
   return result.rows[0].id;

@@ -5,10 +5,12 @@
 import dotenv from "dotenv";
 import app from "./app.js";
 import { connectRedis } from "./config/redis.config.js";
+import { initializeApplicationNotificationPublisher } from "./services/application-notification.publisher.js";
 
 dotenv.config();
 
 await connectRedis();
+await initializeApplicationNotificationPublisher();
 
 const host = process.env.HOST || "localhost";
 const port = process.env.PORT || 5000;
