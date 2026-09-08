@@ -14,6 +14,7 @@ import categoriesRoutes from "./routes/categories.route.js";
 import jobsRoutes from "./routes/jobs.route.js";
 import applicationsRoutes from "./routes/applications.route.js";
 import bookmarksRoutes from "./routes/bookmarks.route.js";
+import documentsRoutes from "./routes/documents.route.js";
 
 // Import Global Error Handler
 import { errorHandler } from "./middlewares/error.middleware.js";
@@ -32,6 +33,7 @@ app.use("/categories", categoriesRoutes);
 app.use("/jobs", jobsRoutes);
 app.use("/applications", applicationsRoutes);
 app.use("/bookmarks", bookmarksRoutes);
+app.use("/documents", documentsRoutes);
 
 // Middleware penanganan kesalahan (harus diletakkan di bagian paling bawah)
 app.use(errorHandler);
