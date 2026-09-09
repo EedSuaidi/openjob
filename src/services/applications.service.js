@@ -70,7 +70,7 @@ export const getApplicationNotificationDetails = async (applicationId) => {
 
 export const getApplications = async () => {
   const result = await pool.query(
-    "SELECT id, user_id, job_id, status, created_at FROM applications ORDER BY created_at DESC"
+    "SELECT * FROM applications ORDER BY created_at DESC"
   );
   return result.rows.map((row) => ({
     ...row,
@@ -82,7 +82,7 @@ export const getApplications = async () => {
 
 export const getApplicationById = async (id) => {
   const query = {
-    text: "SELECT id, user_id, job_id, status, created_at FROM applications WHERE id = $1",
+    text: "SELECT * FROM applications WHERE id = $1",
     values: [id],
   };
 
@@ -107,7 +107,7 @@ export const getApplicationsByUser = async (userId) => {
   }
 
   const query = {
-    text: "SELECT id, user_id, job_id, status, created_at FROM applications WHERE user_id = $1 ORDER BY created_at DESC",
+    text: "SELECT * FROM applications WHERE user_id = $1 ORDER BY created_at DESC",
     values: [parsedUserId],
   };
 
@@ -127,7 +127,7 @@ export const getApplicationsByJob = async (jobId) => {
   }
 
   const query = {
-    text: "SELECT id, user_id, job_id, status, created_at FROM applications WHERE job_id = $1 ORDER BY created_at DESC",
+    text: "SELECT * FROM applications WHERE job_id = $1 ORDER BY created_at DESC",
     values: [parsedJobId],
   };
 

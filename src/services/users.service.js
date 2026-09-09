@@ -49,3 +49,65 @@ export const getUserById = async (id) => {
     id: String(result.rows[0].id),
   };
 };
+
+export const updateUser = async (id, { name, email, password, role }) => {
+  const fields = [];
+  const values = [];
+  let parameterIndex = 1;
+
+  if (name !== undefined) {
+    fields.push(`name = $${parameterIndex}`);
+    values.push(name);
+    parameterIndex += 1;
+  }
+
+  if (email !== undefined) {
+    const emailCheckResult = await pool.query(
+      "SELECT id FROM users WHERE email = $1 AND id != $2",
+      [email, id]
+    );
+
+    if (emailCheckResult.rowCount > 0) {
+      throw new InvariantError(
+        "Gagal memperbarui pengguna. Surel sudah digunakan."
+      );
+    }
+
+    fields.push(`email = $${parameterIndex}`);
+    values.push(email);
+    parameterIndex += 1;
+  }
+
+  if (password !== undefined) {
+    const hashedPassword = await hashPassword(password);
+    fields.push(`password = $${parameterIndex}`);
+    values.push(hashedPassword);
+    parameterIndex += 1;
+  }
+
+  if (role !== undefined) {
+    fields.push(`role = $${parameterIndex}`);
+    values.push(role);
+    parameterIndex += 1;
+  }
+
+  if (fields.length === 0) {
+    return getUserById(id);
+  }
+
+  const query = {
+    text: `UPDATE users SET ${fields.join(", ")} WHERE id = $${parameterIndex} RETURNING id, name, email, role`,
+    values: [...values, id],
+  };
+
+  const result = await pool.query(query);
+
+  if (result.rowCount === 0) {
+    throw new NotFoundError("Gagal memperbarui. Pengguna tidak ditemukan.");
+  }
+
+  return {
+    ...result.rows[0],
+    id: String(result.rows[0].id),
+  };
+};

@@ -1,6 +1,6 @@
 # OpenJob API
 
-REST API untuk platform pencarian kerja **OpenJob**. Aplikasi ini menyediakan pengelolaan pengguna, autentikasi berbasis JWT, perusahaan, kategori, lowongan pekerjaan, lamaran, dan bookmark. Proyek ditulis dengan JavaScript ECMAScript Modules (ESM), Express, dan PostgreSQL.
+REST API untuk platform pencarian kerja **OpenJob**. Aplikasi ini menyediakan pengelolaan pengguna, autentikasi berbasis JWT, perusahaan, kategori, lowongan pekerjaan, lamaran, bookmark, profil pengguna, upload dokumen, cache Redis, serta notifikasi lamaran lewat RabbitMQ dan email.
 
 > Dokumentasi ini menjelaskan perilaku implementasi yang ada pada repository saat ini.
 
@@ -18,6 +18,7 @@ REST API untuk platform pencarian kerja **OpenJob**. Aplikasi ini menyediakan pe
 - [Model data](#model-data)
 - [Autentikasi](#autentikasi)
 - [Referensi API](#referensi-api)
+- [Header respons dan cache](#header-respons-dan-cache)
 - [Validasi dan format error](#validasi-dan-format-error)
 - [Struktur direktori](#struktur-direktori)
 - [Catatan implementasi](#catatan-implementasi)
@@ -31,7 +32,12 @@ REST API untuk platform pencarian kerja **OpenJob**. Aplikasi ini menyediakan pe
 - Pencarian lowongan berdasarkan judul dan/atau nama perusahaan.
 - Pembuatan, pembaruan status, penghapusan, dan penyaringan lamaran.
 - Bookmark lowongan untuk pengguna yang sedang login.
-- Halaman profil untuk melihat data pengguna, riwayat lamaran, dan bookmark miliknya.
+- Profil pengguna aktif untuk melihat data diri, riwayat lamaran, dan bookmark miliknya.
+- Update profil pengguna dengan validasi dan pengecekan kepemilikan data.
+- Upload, daftar, unduh, dan hapus dokumen PDF.
+- Cache Redis untuk detail dan daftar perusahaan, serta detail pengguna.
+- Invalidasi cache otomatis saat data perusahaan/user berubah.
+- Notifikasi lamaran via RabbitMQ dan email menggunakan Nodemailer.
 - Validasi body dan parameter URL menggunakan Zod.
 - Respons error terpadu untuk error klien (`400`, `401`, `404`) dan error server (`500`).
 
@@ -47,6 +53,10 @@ REST API untuk platform pencarian kerja **OpenJob**. Aplikasi ini menyediakan pe
 | Validasi           | Zod               |
 | Password           | bcrypt            |
 | Token              | jsonwebtoken      |
+| Cache              | Redis             |
+| Message broker     | RabbitMQ          |
+| Email              | Nodemailer        |
+| Upload file        | Multer            |
 | Konfigurasi        | dotenv            |
 | Development server | nodemon           |
 
@@ -60,14 +70,15 @@ HTTP request
   -> middleware (autentikasi / validasi)
   -> controller
   -> service
-  -> PostgreSQL
+  -> PostgreSQL / Redis / RabbitMQ
   -> JSON response
 ```
 
 - **Route** mendefinisikan URL dan middleware tiap endpoint.
 - **Middleware** memverifikasi Bearer token, memvalidasi input, dan menerjemahkan error menjadi respons JSON.
 - **Controller** mengambil data dari request dan membentuk respons HTTP.
-- **Service** menyimpan logika bisnis dan seluruh query PostgreSQL.
+- **Service** menyimpan logika bisnis dan query PostgreSQL.
+- **Cache service** menangani Redis untuk data yang sering dibaca.
 - **Exception** menyatakan error klien secara eksplisit agar status HTTP konsisten.
 
 ## Prasyarat
@@ -75,6 +86,9 @@ HTTP request
 - Node.js 20 LTS atau versi yang kompatibel dengan dependensi proyek.
 - npm.
 - PostgreSQL yang berjalan dan dapat diakses.
+- Redis (opsional untuk cache, tetapi aplikasi tetap berjalan tanpa Redis).
+- RabbitMQ (opsional untuk notifikasi lamaran).
+- SMTP/MAIL server jika ingin menggunakan notifikasi email.
 
 ## Instalasi dan menjalankan aplikasi
 
@@ -107,16 +121,23 @@ HTTP request
    npm run start:dev
    ```
 
+7. Jika ingin menjalankan consumer RabbitMQ untuk notifikasi lamaran, jalankan:
+
+   ```bash
+   npm run start:consumer
+   ```
+
 Server akan mendengarkan pada `http://localhost:5000` bila `HOST` dan `PORT` tidak diubah. Tidak ada endpoint root atau health check yang didefinisikan; gunakan endpoint resource seperti `GET /jobs` untuk memeriksa koneksi aplikasi.
 
 ### Perintah npm
 
-| Perintah                                   | Kegunaan                                    |
-| ------------------------------------------ | ------------------------------------------- |
-| `npm run start:dev`                        | Menjalankan `src/server.js` dengan nodemon. |
-| `npm run migrate:create -- <nama-migrasi>` | Membuat file migrasi baru.                  |
-| `npm run migrate:up`                       | Menjalankan migrasi yang belum diterapkan.  |
-| `npm run migrate:down`                     | Membatalkan satu batch migrasi terakhir.    |
+| Perintah                                   | Kegunaan                                        |
+| ------------------------------------------ | ----------------------------------------------- |
+| `npm run start:dev`                        | Menjalankan `src/server.js` dengan nodemon.     |
+| `npm run start:consumer`                   | Menjalankan consumer RabbitMQ untuk notifikasi. |
+| `npm run migrate:create -- <nama-migrasi>` | Membuat file migrasi baru.                      |
+| `npm run migrate:up`                       | Menjalankan migrasi yang belum diterapkan.      |
+| `npm run migrate:down`                     | Membatalkan satu batch migrasi terakhir.        |
 
 ## Konfigurasi environment
 
@@ -134,6 +155,23 @@ PGPASSWORD=ganti_dengan_password_database
 
 ACCESS_TOKEN_KEY=ganti_dengan_rahasia_access_token_yang_panjang
 REFRESH_TOKEN_KEY=ganti_dengan_rahasia_refresh_token_yang_berbeda_dan_panjang
+
+REDIS_HOST=localhost
+REDIS_PORT=6379
+
+RABBITMQ_HOST=localhost
+RABBITMQ_PORT=5672
+RABBITMQ_USER=guest
+RABBITMQ_PASSWORD=guest
+# atau gunakan AMQP_URL jika sudah disediakan
+# AMQP_URL=amqp://guest:guest@localhost:5672
+
+MAIL_HOST=smtp.example.com
+MAIL_PORT=587
+MAIL_USER=your-email@example.com
+MAIL_PASSWORD=your-email-password
+
+DOCUMENTS_UPLOAD_DIR=uploads/documents
 ```
 
 `pg` membaca variabel `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, dan `PGPASSWORD` secara otomatis saat `new Pool()` dipanggil. `node-pg-migrate` juga dapat memakai parameter PostgreSQL tersebut; alternatifnya gunakan `DATABASE_URL`, contohnya:
@@ -144,31 +182,32 @@ DATABASE_URL=postgres://postgres:password@localhost:5432/openjob
 
 ## Migrasi database
 
-Migrasi yang tersedia membuat tujuh tabel berikut.
+Migrasi yang tersedia membuat tabel berikut.
 
 | Tabel             | Fungsi                           | Relasi utama                                        |
 | ----------------- | -------------------------------- | --------------------------------------------------- |
 | `users`           | Akun pengguna dan peran.         | Direferensikan oleh `applications` dan `bookmarks`. |
-| `companies`       | Data perusahaan.                 | Memiliki banyak `jobs`.                             |
+| `companies`       | Data perusahaan.                 | Memiliki banyak `jobs`; memiliki `owner_id`.        |
 | `categories`      | Kategori pekerjaan.              | Memiliki banyak `jobs`.                             |
 | `jobs`            | Lowongan pekerjaan.              | Milik satu perusahaan dan satu kategori.            |
 | `applications`    | Lamaran pengguna.                | Milik satu pengguna dan satu lowongan.              |
 | `bookmarks`       | Lowongan yang disimpan pengguna. | Milik satu pengguna dan satu lowongan.              |
 | `authentications` | Refresh token aktif.             | Menyimpan token sebagai teks.                       |
 
-Foreign key pada `jobs`, `applications`, dan `bookmarks` memakai `ON DELETE CASCADE`. Menghapus perusahaan atau kategori dapat ikut menghapus lowongan terkait; penghapusan lowongan dapat ikut menghapus lamaran dan bookmark terkait.
+`companies` menambahkan kolom `owner_id` melalui migrasi terpisah. Foreign key pada `jobs`, `applications`, dan `bookmarks` memakai `ON DELETE CASCADE`. Menghapus perusahaan atau kategori dapat ikut menghapus lowongan terkait; penghapusan lowongan dapat ikut menghapus lamaran dan bookmark terkait.
 
 ## Model data
 
-| Entitas        | Kolom                                                                   |
-| -------------- | ----------------------------------------------------------------------- |
-| User           | `id`, `name`, `email`, `password`, `role`, `created_at`                 |
-| Company        | `id`, `name`, `location`, `description`, `created_at`                   |
-| Category       | `id`, `name`, `created_at`                                              |
-| Job            | `id`, `title`, `description`, `company_id`, `category_id`, `created_at` |
-| Application    | `id`, `user_id`, `job_id`, `status`, `created_at`                       |
-| Bookmark       | `id`, `user_id`, `job_id`, `created_at`                                 |
-| Authentication | `token`                                                                 |
+| Entitas        | Kolom                                                                           |
+| -------------- | ------------------------------------------------------------------------------- |
+| User           | `id`, `name`, `email`, `password`, `role`, `created_at`                         |
+| Company        | `id`, `name`, `location`, `description`, `owner_id`, `created_at`               |
+| Category       | `id`, `name`, `created_at`                                                      |
+| Job            | `id`, `title`, `description`, `company_id`, `category_id`, `created_at`         |
+| Application    | `id`, `user_id`, `job_id`, `status`, `created_at`                               |
+| Bookmark       | `id`, `user_id`, `job_id`, `created_at`                                         |
+| Authentication | `token`                                                                         |
+| Document       | `id`, `user_id`, `filename`, `original_name`, `mime_type`, `size`, `created_at` |
 
 Status awal lamaran adalah `pending`; nilai yang diterima untuk pembaruan adalah `pending`, `accepted`, atau `rejected`. ID dikirim sebagai string pada sebagian besar respons agar konsisten dengan serialisasi data service.
 
@@ -183,9 +222,8 @@ Status awal lamaran adalah `pending`; nilai yang diterima untuk pembaruan adalah
    ```
 
 4. Saat access token kedaluwarsa, kirim refresh token ke `PUT /authentications` untuk mendapatkan access token baru.
-5. Logout dengan `DELETE /authentications` untuk menghapus refresh token dari database. Endpoint logout juga memerlukan access token yang valid.
-
-Endpoint yang memerlukan autentikasi ditandai dengan **Ya** pada tabel berikut.
+5. Logout dengan `DELETE /authentications` untuk menghapus refresh token dari database.
+6. Endpoint yang memerlukan token juga dapat memvalidasi `req.user.id` untuk menentukan pengguna aktif.
 
 ## Referensi API
 
@@ -195,10 +233,11 @@ Seluruh body request menggunakan `Content-Type: application/json`. Contoh di baw
 
 ### Pengguna
 
-| Method | Endpoint     | Auth  | Deskripsi                            |
-| ------ | ------------ | :---: | ------------------------------------ |
-| `POST` | `/users`     | Tidak | Mendaftarkan pengguna baru.          |
-| `GET`  | `/users/:id` | Tidak | Mendapatkan pengguna berdasarkan ID. |
+| Method | Endpoint     | Auth  | Deskripsi                                        |
+| ------ | ------------ | :---: | ------------------------------------------------ |
+| `POST` | `/users`     | Tidak | Mendaftarkan pengguna baru.                      |
+| `GET`  | `/users/:id` | Tidak | Mendapatkan pengguna berdasarkan ID.             |
+| `PUT`  | `/users/:id` |  Ya   | Memperbarui profil pengguna aktif hanya sendiri. |
 
 **POST `/users`**
 
@@ -218,6 +257,31 @@ Respons `201`:
   "status": "success",
   "message": "Pengguna berhasil didaftarkan.",
   "data": { "id": "1" }
+}
+```
+
+**PUT `/users/:id`**
+
+```json
+{
+  "name": "Budi Santoso Updated",
+  "email": "budi.updated@example.com",
+  "password": "passwordbaru123"
+}
+```
+
+Respons `200`:
+
+```json
+{
+  "status": "success",
+  "message": "Pengguna berhasil diperbarui.",
+  "data": {
+    "id": "1",
+    "name": "Budi Santoso Updated",
+    "email": "budi.updated@example.com",
+    "role": "jobseeker"
+  }
 }
 ```
 
@@ -383,6 +447,43 @@ Body pembaruan status:
 
 Nilai status yang valid: `pending`, `accepted`, dan `rejected`.
 
+### Dokumen PDF
+
+Endpoint dokumen memerlukan token untuk upload dan hapus, GET publik dapat diakses tanpa login. Dokumen disimpan di folder `uploads/documents` dan file dibatasi maksimal `5 MB` serta harus bertipe PDF.
+
+| Method   | Endpoint         | Auth  | Deskripsi                                      |
+| -------- | ---------------- | :---: | ---------------------------------------------- |
+| `POST`   | `/documents`     |  Ya   | Upload dokumen PDF.                            |
+| `GET`    | `/documents`     | Tidak | Daftar semua dokumen.                          |
+| `GET`    | `/documents/:id` | Tidak | Download dokumen berdasarkan ID.               |
+| `DELETE` | `/documents/:id` |  Ya   | Hapus dokumen dan file yang tersimpan di disk. |
+
+**POST `/documents`**
+
+Untuk upload, gunakan form-data dengan field `document`.
+
+### Header respons dan cache
+
+Aplikasi menggunakan header custom untuk menandai sumber data:
+
+```http
+X-Data-Source: cache
+```
+
+atau
+
+```http
+X-Data-Source: database
+```
+
+Header ini dikirim pada response yang mengambil data dari Redis atau dari PostgreSQL. Contoh endpoint dengan cache:
+
+- `GET /companies`
+- `GET /companies/:id`
+- `GET /users/:id`
+
+Setelah terjadi mutasi data seperti update/delete, cache yang terkait dihapus agar response berikutnya bersumber dari database.
+
 ### Contoh respons koleksi
 
 `GET /jobs` mengembalikan data lowongan dalam format berikut:
@@ -418,6 +519,7 @@ Validasi dilakukan sebelum controller dijalankan. Ringkasan aturan input:
 | Job                          | `title` minimal 3 karakter, `description` minimal 10 karakter, `company_id` dan `category_id` integer positif. |
 | Application                  | `job_id` integer positif; status hanya `pending`, `accepted`, atau `rejected`.                                 |
 | Parameter ID yang divalidasi | Integer positif maksimum `2147483647`.                                                                         |
+| Document                     | Hanya file PDF dengan ukuran maksimal 5 MB.                                                                    |
 
 Format error klien:
 
@@ -428,12 +530,12 @@ Format error klien:
 }
 ```
 
-| Status | Kondisi umum                                                                                            |
-| ------ | ------------------------------------------------------------------------------------------------------- |
-| `400`  | Body tidak valid, email sudah digunakan, bookmark/lamaran duplikat, atau refresh token tidak terdaftar. |
-| `401`  | Kredensial salah, header Authorization tidak ada/salah, atau JWT tidak valid/kedaluwarsa.               |
-| `404`  | Resource tidak ditemukan atau parameter ID pada rute yang tervalidasi tidak valid.                      |
-| `500`  | Error internal atau database yang tidak ditangani sebagai error klien.                                  |
+| Status | Kondisi umum                                                                                                                     |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| `400`  | Body tidak valid, email sudah digunakan, bookmark/lamaran duplikat, file upload tidak valid, atau refresh token tidak terdaftar. |
+| `401`  | Kredensial salah, header Authorization tidak ada/salah, atau JWT tidak valid/kedaluwarsa.                                        |
+| `404`  | Resource tidak ditemukan atau parameter ID pada rute yang tervalidasi tidak valid.                                               |
+| `500`  | Error internal atau database yang tidak ditangani sebagai error klien.                                                           |
 
 ## Struktur direktori
 
@@ -441,29 +543,37 @@ Format error klien:
 .
 ├── migrations/                # Definisi skema PostgreSQL
 ├── src/
-│   ├── config/                # Pool koneksi database
+│   ├── config/                # Koneksi database, Redis, RabbitMQ
+│   ├── consumers/             # Consumer RabbitMQ
 │   ├── controllers/           # Handler request dan response
 │   ├── exceptions/            # Kelas error HTTP terstruktur
-│   ├── middlewares/           # Autentikasi, validasi, error handler
+│   ├── middlewares/           # Autentikasi, validasi, upload, error handler
 │   ├── routes/                # Pemetaan endpoint Express
-│   ├── services/              # Query dan logika bisnis
+│   ├── services/              # Query, cache, mailer, dan logika bisnis
 │   ├── utils/                 # Hash password dan JWT
 │   ├── validators/            # Skema Zod
 │   ├── app.js                 # Konfigurasi Express dan pendaftaran route
 │   └── server.js              # Entry point HTTP
+├── uploads/
+│   └── documents/             # File PDF yang diupload
 ├── ERD-OpenJob-versi-1.jpg    # Diagram relasi entitas
 ├── package.json
-└── README.md
+├── rabbitmq-verification.mjs  # Verifikasi RabbitMQ
+├── README.md
+└── OpenJob API.postman_environment.json
 ```
 
 ## Catatan implementasi
 
 - CORS diaktifkan secara global dan body JSON diparsing oleh `express.json()`.
+- Redis diaktifkan secara opsional; jika `REDIS_HOST` tidak diatur, aplikasi tetap berfungsi tanpa cache.
+- RabbitMQ bersifat opsional untuk notifikasi lamaran; jika tidak tersedia, publisher hanya akan menulis log dan tetap menjaga aplikasi berjalan.
+- `GET /companies`, `GET /companies/:id`, dan `GET /users/:id` membaca cache bila tersedia. Setelah update/delete, cache yang terkait dihapus secara eksplisit.
 - Tidak ada middleware otorisasi berbasis `role` pada implementasi saat ini. `role` disimpan saat registrasi, tetapi endpoint yang membutuhkan token dapat diakses oleh setiap pengguna terautentikasi.
 - Endpoint daftar, detail, perubahan status, dan penghapusan lamaran tidak membatasi hasil berdasarkan pemilik lamaran; endpoint tersebut hanya mensyaratkan token valid. Hal yang sama berlaku pada operasi CRUD perusahaan, kategori, dan lowongan.
 - `GET /jobs/company/:companyId`, `GET /jobs/category/:categoryId`, serta filter lamaran per pengguna/lowongan mengembalikan array kosong untuk ID yang tidak valid secara numerik, bukan `404`.
 - Endpoint detail bookmark memvalidasi parameter `jobId`, tetapi detail yang dikembalikan dicari berdasarkan `:id` bookmark. Implementasi tidak memeriksa bahwa bookmark tersebut terkait dengan `:jobId` atau pengguna aktif.
-- Proyek belum menyediakan skrip `test`, linter, formatter, seed database, atau skrip production `start`.
+- Proyek belum menyediakan skrip `test`, linter, formatter, atau seed database.
 
 ## Lisensi
 

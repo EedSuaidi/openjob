@@ -18,9 +18,7 @@ export const createCompany = async (
 };
 
 export const getCompanies = async () => {
-  const result = await pool.query(
-    "SELECT id, name, location, description FROM companies"
-  );
+  const result = await pool.query("SELECT * FROM companies");
   return result.rows.map((company) => ({
     ...company,
     id: String(company.id),
@@ -29,7 +27,7 @@ export const getCompanies = async () => {
 
 export const getCompanyById = async (id) => {
   const query = {
-    text: "SELECT id, name, location, description FROM companies WHERE id = $1",
+    text: "SELECT * FROM companies WHERE id = $1",
     values: [id],
   };
 

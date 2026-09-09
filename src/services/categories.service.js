@@ -15,7 +15,7 @@ export const createCategory = async ({ name }) => {
 };
 
 export const getCategories = async () => {
-  const result = await pool.query("SELECT id, name FROM categories");
+  const result = await pool.query("SELECT * FROM categories");
   return result.rows.map((cat) => ({
     ...cat,
     id: String(cat.id),
@@ -24,7 +24,7 @@ export const getCategories = async () => {
 
 export const getCategoryById = async (id) => {
   const query = {
-    text: "SELECT id, name FROM categories WHERE id = $1",
+    text: "SELECT * FROM categories WHERE id = $1",
     values: [id],
   };
 

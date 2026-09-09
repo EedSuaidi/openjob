@@ -13,8 +13,12 @@ import {
 
 export const postCompany = async (req, res, next) => {
   try {
-    const companyId = await companiesService.createCompany(req.body, req.user.id);
+    const companyId = await companiesService.createCompany(
+      req.body,
+      req.user.id
+    );
     await deleteCache(COMPANY_LIST_CACHE_KEY);
+    res.set("X-Data-Source", "database");
     res
       .status(201)
       .json({ status: "success", data: { id: String(companyId) } });
@@ -67,6 +71,7 @@ export const putCompany = async (req, res, next) => {
       COMPANY_LIST_CACHE_KEY,
       companyDetailCacheKey(req.params.id)
     );
+    res.set("X-Data-Source", "database");
     res
       .status(200)
       .json({ status: "success", message: "Perusahaan berhasil diperbarui." });
@@ -82,6 +87,7 @@ export const deleteCompany = async (req, res, next) => {
       COMPANY_LIST_CACHE_KEY,
       companyDetailCacheKey(req.params.id)
     );
+    res.set("X-Data-Source", "database");
     res
       .status(200)
       .json({ status: "success", message: "Perusahaan berhasil dihapus." });
